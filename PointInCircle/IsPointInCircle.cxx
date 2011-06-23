@@ -9,6 +9,7 @@
 extern "C"
 {
 double incircle(double* pa, double* pb, double* pc, double* pd);
+double orient2d(double* pa, double* pb, double* pc);
 }
 
 int main( int argc, char** argv )
@@ -31,12 +32,13 @@ int main( int argc, char** argv )
   std::cout << "Epsilon_x: " << epsilon_x << std::endl;
   std::cout << "Epsilon_y: " << epsilon_y << std::endl;
 
+  // if the triangle is defined clock wise, the test does not work
   double ax = 1.0;
   double ay = 0.0;
-  double bx = 1.0;
-  double by = 1.0;
-  double cx = 0.0;
+  double cx = 1.0;
   double cy = 1.0;
+  double bx = 0.0;
+  double by = 1.0;
   double dx = epsilon_x;
   double dy = epsilon_y;
   std::cout << "dx: " << dx << std::endl;
@@ -46,6 +48,13 @@ int main( int argc, char** argv )
 
   if( atoi( argv[3] ) == 0 )
     { 
+
+	// orientation test - determination of the sign of ad-bc
+	double a = ax-cx;
+	double b = ay-cy;
+	double c = bx-cx;
+	double d = by-cy;
+	double orientation = a*d-b*c;
 
     typedef itk::Matrix< double, 4,4 > MatrixType;
     MatrixType M;
@@ -69,8 +78,8 @@ int main( int argc, char** argv )
  
     std::cout << "M: " << std::endl;
     std::cout << M << std::endl;
-
-    det = vnl_det( M.GetVnlMatrix() );
+	// determinant computation - the result is multiplied by 'orientation'
+    det = vnl_det( M.GetVnlMatrix() ) * orientation;
     std::cout << "Det(M): " << det << std::endl;
 
     }
@@ -84,8 +93,10 @@ int main( int argc, char** argv )
     pb[0] = bx; pb[1] = by;
     pc[0] = cx; pc[1] = cy;
     pd[0] = dx; pd[1] = dy;
-
-    det = incircle( pa, pb, pc, pd );
+	// orientation test
+	double orientation = orient2d( pa, pb, pc );
+	// incircle test - the result is multiplied by the orientation test result
+    det = incircle( pa, pb, pc, pd ) * orientation;
     std::cout << "Det(M): " << det << std::endl;
     }
 
