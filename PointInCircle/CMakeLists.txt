@@ -46,3 +46,7 @@ add_test( TestIsPointInCircle_3
 add_test( TestIsPointInCircle_4
   IsPointInCircle 0 -0.00000000000000002 1
   )
+set_tests_properties(
+    TestIsPointInCircle_4 
+    PROPERTIES WILL_FAIL "TRUE"
+    )

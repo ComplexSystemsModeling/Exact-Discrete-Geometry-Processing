@@ -19,7 +19,13 @@ int main( int argc, char** argv )
     std::cout << std::endl;
     }
 
-  char **stringPtr;
+  // stringPtr init
+  char value = 0;
+  char* ptr;
+  ptr = &value;
+  char** stringPtr;
+  stringPtr = &ptr;
+
   double epsilon_x = std::strtod( argv[1], stringPtr );
   double epsilon_y = std::strtod( argv[2], stringPtr );
   std::cout << "Epsilon_x: " << epsilon_x << std::endl;
