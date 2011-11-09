@@ -58,6 +58,61 @@ IsInside(
 //------------------------------------------------------------------------------
 
 
+//------------------------------------------------------------------------------
+//  Non exact, ITK native version
+//
+template< typename RealType >
+bool
+IsInsideNotExact(
+  RealType ax,
+  RealType ay,
+  RealType bx,
+  RealType by,
+  RealType cx,
+  RealType cy,
+  RealType dx,
+  RealType dy )
+{
+  double det;
+
+  // orientation test - determination of the sign of ad-bc
+  double a = ax-cx;
+  double b = ay-cy;
+  double c = bx-cx;
+  double d = by-cy;
+  double orientation = a*d-b*c;
+
+  typedef itk::Matrix< double, 4,4 > MatrixType;
+  MatrixType M;
+
+  M(0,0) = ax;
+  M(0,1) = ay;
+  M(0,2) = ax*ax+ay*ay;
+  M(0,3) = 1.0;
+  M(1,0) = bx;
+  M(1,1) = by;
+  M(1,2) = bx*bx+by*by;
+  M(1,3) = 1.0;
+  M(2,0) = cx;
+  M(2,1) = cy;
+  M(2,2) = cx*cx+cy*cy;
+  M(2,3) = 1.0;
+  M(3,0) = dx;
+  M(3,1) = dy;
+  M(3,2) = dx*dx+dy*dy;
+  M(3,3) = 1.0;
+ 
+  std::cout << "M: " << std::endl;
+  std::cout << M << std::endl;
+
+  // determinant computation - the result is multiplied by 'orientation'
+  det = vnl_det( M.GetVnlMatrix() ) * orientation;
+  std::cout << "Det(M): " << det << std::endl;
+
+  return( det>=0?0:1);
+}
+//------------------------------------------------------------------------------
+
 
 //------------------------------------------------------------------------------
 // test code
@@ -100,72 +155,24 @@ int main( int argc, char** argv )
   // use templated test function
 
   // for now, best case scenario, life is good
-  typedef itk::Point< float, 2 > PointType;
+  typedef float                     RealType;
+  typedef itk::Point< RealType, 2 > PointType;
   PointType mpa, mpb, mpc, mpd;
   mpa[0] = mpc[0] = mpc[1] = mpb[1] = 1.0;
   mpa[1] = mpb[0] =                   0.0;
   mpd[0] = epsilon_x;
   mpd[1] = epsilon_y;
 
-  // if the triangle is defined clock wise,
-  // and you do not take into accont orientation,
-  // then the test does not work
-  double ax = 1.0;
-  double ay = 0.0;
-  double cx = 1.0;
-  double cy = 1.0;
-  double bx = 0.0;
-  double by = 1.0;
-  double dx = epsilon_x;
-  double dy = epsilon_y;
-  std::cout << "dx: " << dx << std::endl;
-  std::cout << "dy: " << dy << std::endl;
-
-
   //----------------
   // non exact test
   //---------------
   if( atoi( argv[3] ) == 0 )
-    { 
-    double det;
-
-    // orientation test - determination of the sign of ad-bc
-    double a = ax-cx;
-    double b = ay-cy;
-    double c = bx-cx;
-    double d = by-cy;
-    double orientation = a*d-b*c;
-
-
-    // NOTE ALEX: this should be extracted/inferred from the mesh/point types
-    typedef itk::Matrix< double, 4,4 > MatrixType;
-    MatrixType M;
-
-    M(0,0) = ax;
-    M(0,1) = ay;
-    M(0,2) = ax*ax+ay*ay;
-    M(0,3) = 1.0;
-    M(1,0) = bx;
-    M(1,1) = by;
-    M(1,2) = bx*bx+by*by;
-    M(1,3) = 1.0;
-    M(2,0) = cx;
-    M(2,1) = cy;
-    M(2,2) = cx*cx+cy*cy;
-    M(2,3) = 1.0;
-    M(3,0) = dx;
-    M(3,1) = dy;
-    M(3,2) = dx*dx+dy*dy;
-    M(3,3) = 1.0;
- 
-    std::cout << "M: " << std::endl;
-    std::cout << M << std::endl;
-
-    // determinant computation - the result is multiplied by 'orientation'
-    det = vnl_det( M.GetVnlMatrix() ) * orientation;
-    std::cout << "Det(M): " << det << std::endl;
-
-    return( det>=0?0:1);
+    {
+    return IsInsideNotExact< RealType >(
+      mpa[0], mpa[1],
+      mpb[0], mpb[1],
+      mpc[0], mpc[1],
+      mpd[0], mpd[1] );
     }
 
   //----------------
