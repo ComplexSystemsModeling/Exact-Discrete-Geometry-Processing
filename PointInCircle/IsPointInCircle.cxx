@@ -1,5 +1,9 @@
 #include <itkMatrix.h>
 #include <itkPoint.h>
+#include <itkMesh.h>
+#include <itkQuadEdgeMesh.h>
+#include <itkTriangleCell.h>
+#include <itkCellInterface.h>
 
 #include "vnl/vnl_det.h" 
 #include "vnl/vnl_matrix_fixed.h" 
@@ -11,10 +15,10 @@
 // Skewchuck code
 //
 extern "C"
-{
-double incircle(double* pa, double* pb, double* pc, double* pd);
-double orient2d(double* pa, double* pb, double* pc);
-}
+  {
+  double incircle(double* pa, double* pb, double* pc, double* pd);
+  double orient2d(double* pa, double* pb, double* pc);
+  }
 //------------------------------------------------------------------------------
 
 
@@ -24,10 +28,10 @@ double orient2d(double* pa, double* pb, double* pc);
 template< typename PointType >
 bool
 IsInside(
-  PointType TrianglePoint1,
-  PointType TrianglePoint2,
-  PointType TrianglePoint3,
-  PointType PointToTest )
+  const PointType& TrianglePoint1,
+  const PointType& TrianglePoint2,
+  const PointType& TrianglePoint3,
+  const PointType& PointToTest )
 {
 
   double * pa = new double[2];
@@ -64,14 +68,14 @@ IsInside(
 template< typename RealType >
 bool
 IsInsideNotExact(
-  RealType ax,
-  RealType ay,
-  RealType bx,
-  RealType by,
-  RealType cx,
-  RealType cy,
-  RealType dx,
-  RealType dy )
+  const RealType& ax,
+  const RealType& ay,
+  const RealType& bx,
+  const RealType& by,
+  const RealType& cx,
+  const RealType& cy,
+  const RealType& dx,
+  const RealType& dy )
 {
   double det;
 
@@ -109,13 +113,185 @@ IsInsideNotExact(
   det = vnl_det( M.GetVnlMatrix() ) * orientation;
   std::cout << "Det(M): " << det << std::endl;
 
-  return( det>=0?0:1);
+  return( det>=0?0:1 );
 }
 //------------------------------------------------------------------------------
 
 
 //------------------------------------------------------------------------------
-// test code
+// Convenience Functor
+//
+// fetch triangle from the container,
+// fetch pointsIds from triangleCell
+// fetch points from point container
+// and test
+//
+template<
+  typename MeshType, 
+  typename MeshPointerType, 
+  typename CellIdentifier, 
+  typename PointType >
+bool
+TestPointInTriangleInMesh(
+  MeshPointerType myMesh,
+  const CellIdentifier& TriangleId,
+  const PointType& PointToTest,
+  bool ExactTest
+  )
+{
+  typedef typename MeshType::CellType   CellType; // abstract
+  typedef typename CellType::CellAutoPointer CellAutoPointer; // abstract
+
+  typedef typename MeshType::PixelType  RealType;
+  typedef typename MeshType::CellTraits CellTraits;
+
+  typedef itk::CellInterface< RealType, CellTraits > CellInterfaceType;
+  typedef itk::TriangleCell< CellInterfaceType >     TriangleCellType;
+  typedef typename TriangleCellType::PointIdIterator PointIdIterator;
+
+  PointType mpa, mpb, mpc;
+
+  CellAutoPointer cellIterator;
+  if( myMesh->GetCell( TriangleId, cellIterator ) )
+    {
+    if( cellIterator->GetType() == 2 )
+      { 
+      // we have a triangle, let s get the points
+      PointIdIterator pointIdIterator = cellIterator->PointIdsBegin();
+      // should check the return value
+      myMesh->GetPoint( *pointIdIterator, &mpa );
+      pointIdIterator++;
+      myMesh->GetPoint( *pointIdIterator, &mpb );
+      pointIdIterator++;
+      myMesh->GetPoint( *pointIdIterator, &mpc );
+      if( !ExactTest )
+        {
+        return IsInsideNotExact( //< RealType >(
+          mpa[0], mpa[1],
+          mpb[0], mpb[1],
+          mpc[0], mpc[1],
+          PointToTest[0], PointToTest[1] );
+        }
+      else
+        {
+        return IsInside( mpa, mpb, mpc, PointToTest);
+        // result_2 = IsInside< PointType >( mpa, mpb, mpc, mpd );
+        }
+      }
+    else
+      {
+      // oops - this is not a triangle
+      return( false );
+      }
+    }
+  else
+   {
+   // oops, the cell ID was not found in the container
+   return( false );
+   }
+}
+//------------------------------------------------------------------------------
+
+
+
+//------------------------------------------------------------------------------
+// test function
+//
+// main subroutine of the test
+// for a given meshtype,
+// test the given point against the triangle, either given as 3 points
+// or as a triangle
+// illustrate the code using the itk APIs
+//
+template< typename MeshType >
+bool
+test(
+  const double& eps_x,
+  const double& eps_y,
+  const bool& ExactTest
+  )
+{
+  // sanity check
+  // check dimension, get out if <1 and issue a warning if >2
+
+  // infer types from template
+  typedef typename MeshType::PixelType  RealType;
+  typedef typename MeshType::PointType  PointType;
+  typedef typename MeshType::CellType   CellType; // abstract
+  typedef typename MeshType::CellTraits CellTraits;
+
+  typedef typename MeshType::CellIdentifier  CellIdentifier;
+  typedef typename MeshType::PointIdentifier PointIdentifier;
+
+  typedef typename CellType::CellAutoPointer CellAutoPointer; // abstract
+
+  typedef itk::CellInterface< RealType, CellTraits > CellInterfaceType;
+  typedef itk::TriangleCell< CellInterfaceType >     TriangleCellType;
+  typedef typename TriangleCellType::PointIdIterator PointIdIterator;
+
+  //--------------------------------
+  //  direct method, just use points
+  //--------------------------------
+
+  bool result_1 = false;
+
+  PointType mpa, mpb, mpc, mpd;
+  mpa[0] = mpc[0] = mpc[1] = mpb[1] = 1.0;
+  mpa[1] = mpb[0] =                   0.0;
+  mpd[0] = eps_x;
+  mpd[1] = eps_y;
+
+  if( !ExactTest )
+    {
+    result_1 = IsInsideNotExact(
+      mpa[0], mpa[1],
+      mpb[0], mpb[1],
+      mpc[0], mpc[1],
+      mpd[0], mpd[1] );
+    }
+  else
+    {
+    result_1 = IsInside( mpa, mpb, mpc, mpd );
+    }
+
+  //----------------------------------
+  // closer to real case, use triangle
+  //----------------------------------
+
+  bool result_2 = false;
+
+  // create an empty mesh
+  typedef typename MeshType::Pointer MeshPointerType;
+  MeshPointerType mesh = MeshType::New();
+
+  // add points
+  mesh->SetPoint( 0, mpa );
+  mesh->SetPoint( 1, mpb );
+  mesh->SetPoint( 2, mpc );
+
+  // add cell
+  CellAutoPointer dummyAbstractCell;
+  TriangleCellType * dummyCell = new TriangleCellType();
+  dummyAbstractCell.TakeOwnership( dummyCell ); // polymorphism
+  PointIdentifier dummyCellPoints[3] = {0,1,2};
+  dummyAbstractCell->SetPointIds( dummyCellPoints );
+  mesh->SetCell( 0, dummyAbstractCell ); // invalidate the cell
+
+  // now this code below should be close to what the user will do
+  CellIdentifier myTriangle = 0;
+  result_2 = TestPointInTriangleInMesh< MeshType >( mesh, myTriangle, mpd, ExactTest );
+
+  return( result_1 | result_2 );
+
+}
+//------------------------------------------------------------------------------
+
+
+//------------------------------------------------------------------------------
+// main
+//
+// Test for the given epsilon values, exact or not depending on user
+// for a collection of different types
 //
 int main( int argc, char** argv )
 {
@@ -142,45 +318,26 @@ int main( int argc, char** argv )
   std::cout << "Epsilon_x: " << epsilon_x << std::endl;
   std::cout << "Epsilon_y: " << epsilon_y << std::endl;
 
+  bool TestExact = atoi(argv[3]);
+  std::cout << "Exact Testing? " << TestExact << std::endl;
+
   //--------------
   // test data
   //--------------
 
-
-  // NOTE ALEX: define mesh, qemesh types
-  // then both pointtypes
-  // with dim values of 2,3 and more
-  // then with pixeltype of int, float, double
-  // and test
-  // use templated test function
-
-  // for now, best case scenario, life is good
-  typedef float                     RealType;
-  typedef itk::Point< RealType, 2 > PointType;
-  PointType mpa, mpb, mpc, mpd;
-  mpa[0] = mpc[0] = mpc[1] = mpb[1] = 1.0;
-  mpa[1] = mpb[0] =                   0.0;
-  mpd[0] = epsilon_x;
-  mpd[1] = epsilon_y;
-
-  //----------------
-  // non exact test
-  //---------------
-  if( atoi( argv[3] ) == 0 )
-    {
-    return IsInsideNotExact< RealType >(
-      mpa[0], mpa[1],
-      mpb[0], mpb[1],
-      mpc[0], mpc[1],
-      mpd[0], mpd[1] );
-    }
-
-  //----------------
-  // exact test
-  //---------------
-  else
-    {
-    return IsInside< PointType >( mpa, mpb, mpc, mpd );
-    }
-
+  return(
+      test< itk::Mesh< float,  2 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::Mesh< float,  3 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::Mesh< float,  4 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::Mesh< double, 2 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::Mesh< double, 3 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::Mesh< double, 4 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::QuadEdgeMesh< float,  2 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::QuadEdgeMesh< float,  3 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::QuadEdgeMesh< float,  4 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::QuadEdgeMesh< double, 2 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::QuadEdgeMesh< double, 3 > >( epsilon_x, epsilon_y, TestExact )
+    | test< itk::QuadEdgeMesh< double, 4 > >( epsilon_x, epsilon_y, TestExact )
+    );
 }
+
