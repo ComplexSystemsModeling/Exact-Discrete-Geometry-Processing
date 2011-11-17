@@ -6,7 +6,7 @@ bookmarksopen,
 backref,
 colorlinks,linkcolor={blue},citecolor={blue},urlcolor={blue},
 ]{hyperref}
-\title{Point in circle predicate using exact arithmetic}
+\title{Exact Geometrical Predicate: Point in circle}
 
 % 
 % NOTE: This is the last number of the "handle" URL that 
@@ -16,7 +16,7 @@ colorlinks,linkcolor={blue},citecolor={blue},urlcolor={blue},
 %
 \newcommand{\IJhandlerIDnumber}{1338}
 \release{1.00}
-\author{Alexandre Gouaillard, Bertrand Moreau}
+\author{Bertrand Moreau, Alexandre Gouaillard}
 \authoraddress{Singapore Immunology Network, Biopolis}
 \begin{document}
 \ifpdf
@@ -38,15 +38,17 @@ colorlinks,linkcolor={blue},citecolor={blue},urlcolor={blue},
 
 \begin{abstract}
 \noindent
-This document describes a geometric predicate detecting whether a point lies
-inside a circle; it is based on Jonathan Shewchuk's work on adaptive precision
-floating-point arithmetic described at 
-\url{http://www.cs.cmu.edu/~quake/robust.html}. 
-The code consists in a wrapping of the original Shewchuk's code in the ITK
-CodingStyle.
+This document describes the implementation in ITK of the "point in circle" geometrical predicate.
+Based on Jonathan Shewchuk's work which implements an exact version of the predicate using standard
+floating point types and arithmetic \cite{shewchuk97a}, the implementation consist of an ITK wrapper around the 
+public domain C routines made available by the author of the precedent paper. 
+\cite{shewchuk97aurl}
+Wrapper using itk::PointSet, itk:CellInterface and itk:Mesh / itk:QuadEdgeMesh APIs are provided
+along with corresponding examples which should provide enough details for users to directly
+copy paste code in their application.
 
-This paper is accompanied with the source code along with an example of usage
-for it.
+The application in mind for us is an exact and robust implementation of a delaunay triangulation /
+voronoi tesselation in ITK, and will be presented in a separate paper.
 
 \end{abstract}
 
@@ -81,12 +83,15 @@ c_x & c_y & 1
 \end{bmatrix}
 \end{math}
 
-If this determinant is positive, the points a, b and c are conterclockwise
-oriented; if negative, they are cockwise oriented; and if equal to zero, they
+If this determinant is positive, the points a, b and c are counterclockwise
+oriented; if negative, they are clockwise oriented; and if equal to zero, they
 are collinear.
 
 Points a, b, c and d coordinates are exact precision numbers, as described in
 \cite{shewchuk97a}. This test can be generalised to 3 or more dimensions.
+
+For more details and illustrations, see here:
+\url{http://www.cs.cmu.edu/%7Equake/robust.html}
 
 \section{Implementation}
 
