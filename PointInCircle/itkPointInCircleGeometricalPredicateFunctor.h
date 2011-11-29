@@ -155,7 +155,7 @@ TestPointInTriangleInMesh(
       { 
       // we have a triangle, let s get the points
       PointIdIterator pointIdIterator = cellIterator->PointIdsBegin();
-      // should check the return value
+      // NOTE ALEX: should check the return value
       myMesh->GetPoint( *pointIdIterator, &mpa );
       pointIdIterator++;
       myMesh->GetPoint( *pointIdIterator, &mpb );
@@ -172,7 +172,6 @@ TestPointInTriangleInMesh(
       else
         {
         return IsInside( mpa, mpb, mpc, PointToTest);
-        // result_2 = IsInside< PointType >( mpa, mpb, mpc, mpd );
         }
       }
     else

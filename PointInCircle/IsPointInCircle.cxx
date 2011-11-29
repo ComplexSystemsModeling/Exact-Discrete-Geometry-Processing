@@ -90,7 +90,8 @@ test(
 
   // now this code below should be close to what the user will do
   CellIdentifier myTriangle = 0;
-  result_2 = TestPointInTriangleInMesh< MeshType >( mesh, myTriangle, mpd, ExactTest );
+  result_2 =
+    TestPointInTriangleInMesh< MeshType >( mesh, myTriangle, mpd, ExactTest );
 
   return( result_1 | result_2 );
 
